@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, GraduationCap, BookOpen } from "lucide-react";
+import { Search, GraduationCap, BookOpen, MessageCircle, Sparkles, ArrowRight } from "lucide-react";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
+import Link from "next/link";
 
 type ExploreUser = {
   id: string;
@@ -15,8 +17,11 @@ type ExploreUser = {
   skills: { type: string; skill: { name: string; category: string } }[];
 };
 
+const categories = ["All", "Programming", "Design", "Music", "Languages", "Math", "Science", "Business"];
+
 export default function ExplorePage() {
   const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
   const [users, setUsers] = useState<ExploreUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,87 +41,126 @@ export default function ExplorePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Explore</h1>
-        <p className="text-muted-foreground">Find peers and discover new skills</p>
-      </div>
+      <FadeIn>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Explore Skills</h1>
+          <p className="text-muted-foreground mt-1">Find peers who teach what you want to learn</p>
+        </div>
+      </FadeIn>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, skill, or university..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <FadeIn delay={0.1}>
+        <div className="relative max-w-lg">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-muted-foreground" />
+          <Input
+            placeholder="Search by name, skill, or university..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-10 h-11 text-base"
+          />
+        </div>
+      </FadeIn>
 
-      {/* Results */}
+      <FadeIn delay={0.15}>
+        <div className="flex gap-2 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </FadeIn>
+
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6 h-40" />
+              <CardContent className="pt-6 h-52" />
             </Card>
           ))}
         </div>
       ) : users.length === 0 ? (
-        <div className="text-center py-16">
-          <Search className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No users found. Try a different search.</p>
-        </div>
+        <FadeIn>
+          <div className="text-center py-20">
+            <div className="mx-auto h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <p className="font-semibold text-lg mb-1">No matches found</p>
+            <p className="text-muted-foreground">Try a different search term or browse all categories.</p>
+          </div>
+        </FadeIn>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {users.map((user) => {
             const teachSkills = user.skills.filter((s) => s.type === "TEACH");
             const learnSkills = user.skills.filter((s) => s.type === "LEARN");
             const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
 
             return (
-              <Card key={user.id} className="hover:border-foreground/20 transition-colors">
-                <CardHeader className="flex flex-row items-center gap-3 pb-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-sm">{user.name}</CardTitle>
-                    {user.university && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <GraduationCap className="h-3 w-3" />
-                        {user.university}{user.major ? ` · ${user.major}` : ""}
-                      </p>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {teachSkills.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" /> Can teach
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {teachSkills.map((s, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{s.skill.name}</Badge>
-                        ))}
+              <StaggerItem key={user.id}>
+                <Link href={`/user/${user.id}`}>
+                  <Card className="hover:border-primary/30 transition-all hover:shadow-md cursor-pointer group h-full">
+                    <CardHeader className="flex flex-row items-center gap-3 pb-3">
+                      <Avatar className="h-12 w-12 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base">{user.name}</CardTitle>
+                        {user.university && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            {user.university}{user.major ? ` · ${user.major}` : ""}
+                          </p>
+                        )}
                       </div>
-                    </div>
-                  )}
-                  {learnSkills.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1.5">Wants to learn</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {learnSkills.map((s, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{s.skill.name}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {teachSkills.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1 font-medium">
+                            <BookOpen className="h-3.5 w-3.5" /> Can teach
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {teachSkills.slice(0, 4).map((s, i) => (
+                              <Badge key={i} className="bg-primary/10 text-primary border-0 text-xs">{s.skill.name}</Badge>
+                            ))}
+                            {teachSkills.length > 4 && (
+                              <Badge variant="outline" className="text-xs">+{teachSkills.length - 4}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {learnSkills.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Wants to learn</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {learnSkills.slice(0, 4).map((s, i) => (
+                              <Badge key={i} variant="outline" className="text-xs border-accent/30 text-accent">{s.skill.name}</Badge>
+                            ))}
+                            {learnSkills.length > 4 && (
+                              <Badge variant="outline" className="text-xs">+{learnSkills.length - 4}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {teachSkills.length === 0 && learnSkills.length === 0 && (
+                        <p className="text-sm text-muted-foreground italic">No skills listed yet</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              </StaggerItem>
             );
           })}
-        </div>
+        </StaggerContainer>
       )}
     </div>
   );

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Clock, CheckCircle, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CalendarDays, Clock, CheckCircle, XCircle, Sparkles, ArrowRight } from "lucide-react";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
+import Link from "next/link";
 
 type Session = {
   id: string;
@@ -20,6 +21,7 @@ type Session = {
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     fetch("/api/sessions")
@@ -31,60 +33,111 @@ export default function SessionsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const statusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED": return <CheckCircle className="h-3.5 w-3.5 text-green-600" />;
-      case "CANCELLED": return <XCircle className="h-3.5 w-3.5 text-red-500" />;
-      case "SCHEDULED": return <CalendarDays className="h-3.5 w-3.5 text-blue-500" />;
-      default: return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
-    }
+  const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+    COMPLETED: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "text-emerald-600", bg: "bg-emerald-50" },
+    CANCELLED: { icon: <XCircle className="h-3.5 w-3.5" />, color: "text-red-500", bg: "bg-red-50" },
+    SCHEDULED: { icon: <CalendarDays className="h-3.5 w-3.5" />, color: "text-primary", bg: "bg-primary/10" },
+    PENDING: { icon: <Clock className="h-3.5 w-3.5" />, color: "text-amber-500", bg: "bg-amber-50" },
   };
+
+  const filters = ["all", "SCHEDULED", "PENDING", "COMPLETED", "CANCELLED"];
+
+  const filteredSessions = filter === "all" ? sessions : sessions.filter((s) => s.status === filter);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
-        <p className="text-muted-foreground">Manage your skill swap sessions</p>
-      </div>
+      <FadeIn>
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Sessions</h1>
+          <p className="text-muted-foreground mt-1">Track your skill swap sessions</p>
+        </div>
+      </FadeIn>
+
+      {/* Filter pills */}
+      <FadeIn delay={0.1}>
+        <div className="flex gap-2 flex-wrap">
+          {filters.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
+                filter === f
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {f === "all" ? "All Sessions" : f.toLowerCase()}
+            </button>
+          ))}
+        </div>
+      </FadeIn>
 
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse"><CardContent className="pt-6 h-32" /></Card>
           ))}
         </div>
-      ) : sessions.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-16">
-            <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-2">No sessions yet</p>
-            <p className="text-sm text-muted-foreground">Explore skills and book your first session!</p>
-          </CardContent>
-        </Card>
+      ) : filteredSessions.length === 0 ? (
+        <FadeIn>
+          <Card>
+            <CardContent className="text-center py-20">
+              <div className="mx-auto h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <p className="font-semibold text-lg mb-1">
+                {sessions.length === 0 ? "No sessions yet" : "No matching sessions"}
+              </p>
+              <p className="text-muted-foreground text-sm mb-4">
+                {sessions.length === 0
+                  ? "Explore skills and book your first swap session!"
+                  : "Try a different filter to see more sessions."}
+              </p>
+              {sessions.length === 0 && (
+                <Link href="/explore" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                  Browse skills <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        </FadeIn>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {sessions.map((s) => (
-            <Card key={s.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{s.skill.name}</CardTitle>
-                <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                  {statusIcon(s.status)}
-                  {s.status}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {s.role === "teacher" ? `Teaching ${s.learner.name}` : `Learning from ${s.teacher.name}`}
-                </p>
-                {s.scheduledAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Scheduled: {new Date(s.scheduledAt).toLocaleDateString()} at {new Date(s.scheduledAt).toLocaleTimeString()}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <StaggerContainer className="grid gap-4 md:grid-cols-2">
+          {filteredSessions.map((s) => {
+            const config = statusConfig[s.status] || statusConfig.PENDING;
+            return (
+              <StaggerItem key={s.id}>
+                <Card className="hover:border-primary/20 transition-all hover:shadow-sm">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-semibold">{s.skill.name}</CardTitle>
+                    <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.color} ${config.bg}`}>
+                      {config.icon}
+                      {s.status}
+                    </span>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm">
+                      {s.role === "teacher" ? (
+                        <>Teaching <span className="font-medium">{s.learner.name}</span></>
+                      ) : (
+                        <>Learning from <span className="font-medium">{s.teacher.name}</span></>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3" />
+                      {s.scheduledAt
+                        ? `${new Date(s.scheduledAt).toLocaleDateString()} at ${new Date(s.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : "Date TBD"}
+                    </p>
+                    <Badge variant="outline" className="text-xs">
+                      {s.role === "teacher" ? "Teaching" : "Learning"}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              </StaggerItem>
+            );
+          })}
+        </StaggerContainer>
       )}
     </div>
   );
