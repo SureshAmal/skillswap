@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Send, MessageCircle, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { FadeIn } from "@/components/motion";
@@ -13,6 +13,7 @@ import { FadeIn } from "@/components/motion";
 type Conversation = {
   userId: string;
   name: string;
+  avatarUrl: string | null;
   lastMessage: string;
   unread: number;
 };
@@ -50,7 +51,7 @@ export default function MessagesScreen() {
         let convos: Conversation[] = data.conversations || [];
         // If we have a preselected user not in existing conversations, add them
         if (preselectedUser && preselectedName && !convos.find((c) => c.userId === preselectedUser)) {
-          convos = [{ userId: preselectedUser, name: preselectedName, lastMessage: "", unread: 0 }, ...convos];
+          convos = [{ userId: preselectedUser, name: preselectedName, avatarUrl: null, lastMessage: "", unread: 0 }, ...convos];
         }
         setConversations(convos);
         setCurrentUserId(data.currentUserId);
@@ -195,6 +196,7 @@ export default function MessagesScreen() {
                         }`}
                       >
                         <Avatar className="h-10 w-10">
+                          <AvatarImage src={conv.avatarUrl || undefined} className="object-cover" />
                           <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -226,6 +228,7 @@ export default function MessagesScreen() {
                       </button>
                       <Link href={`/user/${selectedUser}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={selectedConversation?.avatarUrl || undefined} className="object-cover" />
                           <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
                             {selectedConversation?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                           </AvatarFallback>

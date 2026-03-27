@@ -24,39 +24,40 @@ export async function GET() {
     ...received.map((m) => m.senderId),
   ])];
 
-  const conversations = await Promise.all(
-    userIds.map(async (userId) => {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, name: true },
-      });
+    const conversations = await Promise.all(
+      userIds.map(async (userId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, avatarUrl: true },
+        });
 
-      const lastMsg = await prisma.message.findFirst({
-        where: {
-          OR: [
-            { senderId: session.userId, receiverId: userId },
-            { senderId: userId, receiverId: session.userId },
-          ],
-        },
-        orderBy: { createdAt: "desc" },
-      });
+        const lastMsg = await prisma.message.findFirst({
+          where: {
+            OR: [
+              { senderId: session.userId, receiverId: userId },
+              { senderId: userId, receiverId: session.userId },
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+        });
 
-      const unread = await prisma.message.count({
-        where: {
-          senderId: userId,
-          receiverId: session.userId,
-          read: false,
-        },
-      });
+        const unread = await prisma.message.count({
+          where: {
+            senderId: userId,
+            receiverId: session.userId,
+            read: false,
+          },
+        });
 
-      return {
-        userId,
-        name: user?.name ?? "Unknown",
-        lastMessage: lastMsg?.content ?? "",
-        unread,
-      };
-    })
-  );
+        return {
+          userId,
+          name: user?.name ?? "Unknown",
+          avatarUrl: user?.avatarUrl ?? null,
+          lastMessage: lastMsg?.content ?? "",
+          unread,
+        };
+      })
+    );
 
   return NextResponse.json({ currentUserId: session.userId, conversations });
 }

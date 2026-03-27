@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,15 +115,12 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardContent className="pt-8 pb-6">
               <div className="flex flex-col items-center text-center">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="h-24 w-24 mb-4 rounded-full object-cover border-4 border-primary/20" />
-                ) : (
-                  <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
+                  <AvatarImage src={user.avatarUrl || undefined} alt={user.name} className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
                 <h2 className="text-xl font-bold">{user.name}</h2>
                 {user.university && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">

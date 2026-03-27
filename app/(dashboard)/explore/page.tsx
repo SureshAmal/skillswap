@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, GraduationCap, BookOpen, MessageCircle, Sparkles, ArrowRight } from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import Link from "next/link";
@@ -109,13 +109,10 @@ export default function ExplorePage() {
                 <Link href={`/user/${user.id}`}>
                   <Card className="hover:border-primary/30 transition-all hover:shadow-md cursor-pointer group h-full">
                     <CardHeader className="flex flex-row items-center gap-3 pb-3">
-                      {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.name} className="h-12 w-12 rounded-full object-cover border-2 border-primary/20 shrink-0" />
-                      ) : (
-                        <Avatar className="h-12 w-12 border-2 border-primary/20">
-                          <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
-                        </Avatar>
-                      )}
+                      <Avatar className="h-12 w-12 border-2 border-primary/20 shrink-0">
+                        <AvatarImage src={user.avatarUrl || undefined} alt={user.name} className="object-cover" />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                      </Avatar>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-base">{user.name}</CardTitle>
                         {user.university && (
