@@ -11,10 +11,10 @@ export async function GET(req: Request) {
   
   if (q) {
     whereClause.OR = [
-      { name: { contains: q, mode: "insensitive" } },
-      { university: { contains: q, mode: "insensitive" } },
-      { major: { contains: q, mode: "insensitive" } },
-      { skills: { some: { skill: { name: { contains: q, mode: "insensitive" } } } } },
+      { name: { contains: q } },
+      { university: { contains: q } },
+      { major: { contains: q } },
+      { skills: { some: { skill: { name: { contains: q } } } } },
     ];
   }
 
