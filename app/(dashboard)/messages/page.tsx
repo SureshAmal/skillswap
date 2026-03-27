@@ -34,6 +34,7 @@ export default function MessagesScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const selectedUserRef = useRef(selectedUser);
@@ -52,6 +53,7 @@ export default function MessagesScreen() {
           convos = [{ userId: preselectedUser, name: preselectedName, lastMessage: "", unread: 0 }, ...convos];
         }
         setConversations(convos);
+        setCurrentUserId(data.currentUserId);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -243,25 +245,25 @@ export default function MessagesScreen() {
                     </div>
                   )}
                   {messages.map((msg) => (
-                    <div
+                      <div
                       key={msg.id}
-                      className={`flex group ${msg.senderId === selectedUser ? "justify-start" : "justify-end"}`}
+                      className={`flex group ${msg.senderId === currentUserId ? "justify-end" : "justify-start"}`}
                     >
                       <div className="flex items-center gap-2">
-                        {msg.senderId !== selectedUser && (
+                        {msg.senderId === currentUserId && (
                           <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all rounded-full hover:bg-destructive/10">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                         <div
                           className={`rounded-2xl px-4 py-2.5 max-w-[75%] ${
-                            msg.senderId === selectedUser
-                              ? "bg-muted"
-                              : "bg-primary text-primary-foreground"
+                            msg.senderId === currentUserId
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
                           }`}
                         >
                           <p className="text-sm">{msg.content}</p>
-                          <p className={`text-[10px] mt-1 ${msg.senderId === selectedUser ? "text-muted-foreground" : "text-primary-foreground/60"}`}>
+                          <p className={`text-[10px] mt-1 ${msg.senderId === currentUserId ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
