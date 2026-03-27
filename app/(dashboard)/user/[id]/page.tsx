@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   GraduationCap, BookOpen, Award, Clock, MessageCircle,
@@ -23,7 +24,7 @@ type UserProfile = {
   avatarUrl: string | null;
   createdAt: string;
   completedSessionsCount: number;
-  skills: { id: string; type: string; level: string; skill: { name: string; category: string } }[];
+  skills: { id: string; type: string; level: string; skill: { id: string; name: string; category: string } }[];
   certificates: { id: string; title: string; issuer: string; verified: boolean; skill: { name: string } }[];
 };
 
@@ -31,6 +32,35 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [selectedSkillId, setSelectedSkillId] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [bookingStatus, setBookingStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  const handleBookSession = async () => {
+    if (!selectedSkillId || !scheduledAt || !user) return;
+    setBookingStatus("loading");
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherId: user.id,
+          skillId: selectedSkillId,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+        })
+      });
+      if (res.ok) {
+        setBookingStatus("success");
+        setTimeout(() => setBookingOpen(false), 2000);
+      } else {
+        setBookingStatus("error");
+      }
+    } catch {
+      setBookingStatus("error");
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/users/${id}`)
@@ -125,12 +155,17 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
                   <CalendarDays className="h-3.5 w-3.5" /> Member since {memberSince}
                 </div>
 
-                {/* Message button */}
-                <Link href={`/messages?user=${user.id}&name=${encodeURIComponent(user.name)}`} className="w-full mt-5">
-                  <Button className="w-full">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Send Message
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-2 w-full mt-5">
+                  <Link href={`/messages?user=${user.id}&name=${encodeURIComponent(user.name)}`} className="w-full">
+                    <Button variant="outline" className="w-full h-9">
+                      <MessageCircle className="mr-2 h-4 w-4" /> Message
+                    </Button>
+                  </Link>
+                  <Button onClick={() => setBookingOpen(true)} className="w-full h-9 bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary border-0">
+                    <CalendarDays className="mr-2 h-4 w-4" /> Book Swap
                   </Button>
-                </Link>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -263,6 +298,70 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           </FadeIn>
         </div>
       </div>
+      {/* Booking Modal */}
+      {bookingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <FadeIn className="w-full max-w-md">
+            <Card className="shadow-2xl border-primary/20">
+              <CardHeader className="border-b bg-muted/30 pb-4">
+                <CardTitle className="text-xl">Book Session with {user.name}</CardTitle>
+                <CardDescription>Select a skill you want to learn and propose a time.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {bookingStatus === "success" ? (
+                  <div className="py-6 text-center space-y-2">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4 scale-in-center">
+                      <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <p className="font-semibold text-lg text-emerald-600 dark:text-emerald-400">Swap Requested!</p>
+                    <p className="text-sm text-muted-foreground">They have been notified and will review your request soon.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Skill</label>
+                      <select 
+                        value={selectedSkillId} 
+                        onChange={(e) => setSelectedSkillId(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="" disabled>Choose a skill they teach...</option>
+                        {teachSkills.map(s => (
+                          <option key={s.skill.id} value={s.skill.id}>{s.skill.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Proposed Date & Time</label>
+                      <div className="relative">
+                        <Input 
+                          type="datetime-local" 
+                          value={scheduledAt}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledAt(e.target.value)}
+                          className="w-full pl-9"
+                        />
+                        <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                    
+                    {bookingStatus === "error" && (
+                      <p className="text-sm text-destructive font-medium bg-destructive/10 p-2 rounded text-center">Something went wrong. Please try again.</p>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-4 mt-2">
+                      <Button variant="ghost" onClick={() => setBookingOpen(false)}>Cancel</Button>
+                      <Button onClick={handleBookSession} disabled={!selectedSkillId || !scheduledAt || bookingStatus === "loading"}>
+                        {bookingStatus === "loading" ? "Scheduling..." : "Send Request"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </FadeIn>
+        </div>
+      )}
     </div>
   );
 }

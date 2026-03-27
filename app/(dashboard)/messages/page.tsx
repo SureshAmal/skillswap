@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, MessageCircle, ArrowLeft } from "lucide-react";
+import { Send, MessageCircle, ArrowLeft, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { FadeIn } from "@/components/motion";
 
 type Conversation = {
@@ -23,7 +24,7 @@ type Message = {
   createdAt: string;
 };
 
-export default function MessagesPage() {
+export default function MessagesScreen() {
   const searchParams = useSearchParams();
   const preselectedUser = searchParams.get("user");
   const preselectedName = searchParams.get("name");
@@ -33,7 +34,13 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const selectedUserRef = useRef(selectedUser);
+
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
 
   useEffect(() => {
     fetch("/api/messages/conversations")
@@ -61,18 +68,87 @@ export default function MessagesPage() {
       .catch(() => {});
   }, [selectedUser]);
 
+  // Vercel Serverless-compatible Polling Mechanism
+  useEffect(() => {
+    if (!selectedUser) return;
+    let isMounted = true;
+
+    const fetchLatest = async () => {
+      try {
+        const r = await fetch(`/api/messages?userId=${selectedUser}`);
+        const data = await r.json();
+        
+        if (isMounted && data.messages) {
+          setMessages(prev => {
+            if (prev.length === data.messages.length) return prev;
+            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+            return data.messages;
+          });
+          
+          // Refetch conversations just to update the sidebar cleanly on new messages
+          fetch("/api/messages/conversations")
+            .then(res => res.json())
+            .then(c => {
+               if (isMounted) setConversations(c.conversations || []);
+            });
+        }
+      } catch (e) {}
+    };
+
+    // Poll every 3 seconds
+    const interval = setInterval(fetchLatest, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [selectedUser]);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) return;
-    await fetch("/api/messages", {
+    const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ receiverId: selectedUser, content: newMessage }),
     });
     setNewMessage("");
-    const res = await fetch(`/api/messages?userId=${selectedUser}`);
-    const data = await res.json();
-    setMessages(data.messages || []);
+    if (res.ok) {
+      const data = await res.json();
+      setMessages((prev) => [...prev, data.message]);
+      
+      // Update our own conversations list to reflect the last message we just explicitly sent
+      setConversations((prev) => {
+        const existing = prev.find(c => c.userId === selectedUser);
+        if (existing) {
+          return prev.map(c => c.userId === selectedUser ? { ...c, lastMessage: data.message.content } : c);
+        }
+        return prev;
+      });
+    }
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
+  const clearChat = async (userId: string) => {
+    if (!confirm("Are you sure you want to clear this entire chat history?")) return;
+    const res = await fetch("/api/messages", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ otherUserId: userId }),
+    });
+    if (res.ok) {
+      setMessages([]);
+      setConversations(prev => prev.map(c => c.userId === userId ? { ...c, lastMessage: "" } : c));
+    }
+  };
+
+  const deleteMessage = async (msgId: string) => {
+    const res = await fetch("/api/messages", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId: msgId }),
+    });
+    if (res.ok) {
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+    }
   };
 
   const selectedConversation = conversations.find((c) => c.userId === selectedUser);
@@ -89,7 +165,7 @@ export default function MessagesPage() {
       <FadeIn delay={0.1}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-240px)] min-h-[500px]">
           {/* Conversations List */}
-          <Card className="md:col-span-1 overflow-hidden flex flex-col">
+          <Card className={`md:col-span-1 overflow-hidden flex-col ${selectedUser ? "hidden md:flex" : "flex"}`}>
             <CardHeader className="pb-3 shrink-0">
               <CardTitle className="text-base">Conversations</CardTitle>
             </CardHeader>
@@ -137,20 +213,27 @@ export default function MessagesPage() {
           </Card>
 
           {/* Chat Area */}
-          <Card className="md:col-span-2 flex flex-col overflow-hidden">
+          <Card className={`md:col-span-2 flex-col overflow-hidden ${!selectedUser ? "hidden md:flex" : "flex"}`}>
             {selectedUser ? (
               <>
                 <CardHeader className="pb-3 border-b shrink-0">
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setSelectedUser(null)} className="md:hidden text-muted-foreground hover:text-foreground">
-                      <ArrowLeft className="h-5 w-5" />
-                    </button>
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                        {selectedConversation?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="text-base">{selectedConversation?.name ?? "Chat"}</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setSelectedUser(null)} className="md:hidden text-muted-foreground hover:text-foreground">
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      <Link href={`/user/${selectedUser}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                            {selectedConversation?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <CardTitle className="text-base">{selectedConversation?.name ?? "Chat"}</CardTitle>
+                      </Link>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => clearChat(selectedUser!)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -162,19 +245,26 @@ export default function MessagesPage() {
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`flex ${msg.senderId === selectedUser ? "justify-start" : "justify-end"}`}
+                      className={`flex group ${msg.senderId === selectedUser ? "justify-start" : "justify-end"}`}
                     >
-                      <div
-                        className={`rounded-2xl px-4 py-2.5 max-w-[75%] ${
-                          msg.senderId === selectedUser
-                            ? "bg-muted"
-                            : "bg-primary text-primary-foreground"
-                        }`}
-                      >
-                        <p className="text-sm">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 ${msg.senderId === selectedUser ? "text-muted-foreground" : "text-primary-foreground/60"}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        {msg.senderId !== selectedUser && (
+                          <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all rounded-full hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                        <div
+                          className={`rounded-2xl px-4 py-2.5 max-w-[75%] ${
+                            msg.senderId === selectedUser
+                              ? "bg-muted"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          <p className="text-sm">{msg.content}</p>
+                          <p className={`text-[10px] mt-1 ${msg.senderId === selectedUser ? "text-muted-foreground" : "text-primary-foreground/60"}`}>
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}

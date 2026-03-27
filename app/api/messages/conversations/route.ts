@@ -58,5 +58,5 @@ export async function GET() {
     })
   );
 
-  return NextResponse.json({ conversations });
+  return NextResponse.json({ currentUserId: session.userId, conversations });
 }

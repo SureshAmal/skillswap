@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CalendarDays, Clock, CheckCircle, XCircle, Sparkles, ArrowRight } from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import Link from "next/link";
@@ -22,6 +23,25 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const handleStatusChange = async (sessionId: string, newStatus: string) => {
+    setUpdating(sessionId);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setSessions((prev) => 
+          prev.map((s) => (s.id === sessionId ? { ...s, status: newStatus } : s))
+        );
+      }
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/sessions")
@@ -132,6 +152,30 @@ export default function SessionsPage() {
                     <Badge variant="outline" className="text-xs">
                       {s.role === "teacher" ? "Teaching" : "Learning"}
                     </Badge>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-4 pt-4 border-t">
+                      {s.status === "PENDING" && s.role === "teacher" && (
+                        <>
+                          <Button size="sm" onClick={() => handleStatusChange(s.id, "SCHEDULED")} disabled={updating === s.id} className="w-full bg-primary/20 hover:bg-primary/30 text-primary border-0">
+                            Accept
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleStatusChange(s.id, "CANCELLED")} disabled={updating === s.id} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
+                            Decline
+                          </Button>
+                        </>
+                      )}
+                      {s.status === "SCHEDULED" && (
+                        <Button size="sm" variant="outline" onClick={() => handleStatusChange(s.id, "COMPLETED")} disabled={updating === s.id} className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700">
+                          <CheckCircle className="mr-2 h-4 w-4" /> Mark Completed
+                        </Button>
+                      )}
+                      {s.status === "PENDING" && s.role === "learner" && (
+                        <Button size="sm" variant="outline" disabled className="w-full opacity-50 border-dashed">
+                          <Clock className="mr-2 h-4 w-4" /> Waiting for approval
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </StaggerItem>

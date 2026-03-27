@@ -55,3 +55,37 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ message });
 }
+
+export async function DELETE(req: Request) {
+  const session = await verifySession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const { messageId, otherUserId } = body;
+
+  if (messageId) {
+    // Delete single message created by this user
+    await prisma.message.deleteMany({
+      where: {
+        id: messageId,
+        senderId: session.userId,
+      },
+    });
+    return NextResponse.json({ success: true });
+  }
+
+  if (otherUserId) {
+    // Clear chat between this user and other user
+    await prisma.message.deleteMany({
+      where: {
+        OR: [
+          { senderId: session.userId, receiverId: otherUserId },
+          { senderId: otherUserId, receiverId: session.userId },
+        ],
+      },
+    });
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+}
