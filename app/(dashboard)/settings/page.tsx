@@ -11,8 +11,8 @@ import { Save, Plus, X, Upload, User, GraduationCap, BookOpen, Palette } from "l
 import { FadeIn } from "@/components/motion";
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState({ name: "", bio: "", university: "", major: "" });
-  const [newSkill, setNewSkill] = useState({ name: "", type: "TEACH", level: "Intermediate" });
+  const [profile, setProfile] = useState({ name: "", bio: "", university: "", major: "", avatarUrl: "" });
+  const [newSkill, setNewSkill] = useState({ name: "", type: "TEACH", level: "Intermediate", hasCert: false, certTitle: "", certIssuer: "" });
   const [skills, setSkills] = useState<{ id: string; type: string; level: string; skill: { name: string } }[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -24,7 +24,7 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.user) {
-          setProfile({ name: data.user.name, bio: data.user.bio || "", university: data.user.university || "", major: data.user.major || "" });
+          setProfile({ name: data.user.name, bio: data.user.bio || "", university: data.user.university || "", major: data.user.major || "", avatarUrl: data.user.avatarUrl || "" });
           setSkills(data.user.skills || []);
         }
       });
@@ -52,15 +52,35 @@ export default function SettingsPage() {
 
   const addSkill = async () => {
     if (!newSkill.name.trim()) return;
+
+    const payload: any = {
+      name: newSkill.name,
+      type: newSkill.type,
+      level: newSkill.level,
+    };
+
+    if (newSkill.type === "TEACH" && newSkill.hasCert && newSkill.certTitle && newSkill.certIssuer) {
+      payload.certificate = {
+        title: newSkill.certTitle,
+        issuer: newSkill.certIssuer,
+      };
+    }
+
     const res = await fetch("/api/skills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newSkill),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const data = await res.json();
       setSkills([...skills, data.userSkill]);
-      setNewSkill({ name: "", type: "TEACH", level: "Intermediate" });
+      setNewSkill({ name: "", type: "TEACH", level: "Intermediate", hasCert: false, certTitle: "", certIssuer: "" });
+      // Reset the upload button if present
+      const btn = document.getElementById("cert-upload-btn");
+      if (btn) {
+        btn.innerText = "Attach File";
+        btn.classList.remove("text-emerald-500", "border-emerald-500", "bg-emerald-50", "dark:bg-emerald-950");
+      }
     }
   };
 
@@ -133,11 +153,54 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                    {profile.name ? profile.name.split(" ").map(n => n[0]).join("").slice(0, 2) : "?"}
-                  </div>
+                  {profile.avatarUrl ? (
+                    <img src={profile.avatarUrl} alt="Avatar" className="h-14 w-14 rounded-full object-cover shrink-0 border" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                      {profile.name ? profile.name.split(" ").map(n => n[0]).join("").slice(0, 2) : "?"}
+                    </div>
+                  )}
                   <div>
-                    <Button variant="outline" size="sm">
+                    <input 
+                      type="file" 
+                      id="avatar-upload" 
+                      className="hidden" 
+                      accept="image/jpeg, image/png, image/gif" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const newAvatarUrl = reader.result as string;
+                            setProfile({ ...profile, avatarUrl: newAvatarUrl });
+                            
+                            // Auto-save just the avatar
+                            fetch("/api/profile", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ...profile, avatarUrl: newAvatarUrl }),
+                            });
+
+                            const btn = document.getElementById("upload-btn");
+                            if (btn) {
+                              btn.innerText = "Uploaded ✓";
+                              btn.classList.add("text-emerald-500", "border-emerald-500");
+                              setTimeout(() => {
+                                btn.innerText = "Upload Image";
+                                btn.classList.remove("text-emerald-500", "border-emerald-500");
+                              }, 2000);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => document.getElementById("avatar-upload")?.click()}
+                      id="upload-btn"
+                    >
                       <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Image
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">JPG, PNG or GIF. Max 2MB.</p>
@@ -272,7 +335,76 @@ export default function SettingsPage() {
                       </select>
                     </div>
                   </div>
-                  <Button onClick={addSkill} size="sm" className="w-full">
+
+                  {/* Certification opt-in for TEACH skills */}
+                  {newSkill.type === "TEACH" && (
+                    <div className="mt-2 space-y-2 border rounded-lg p-3 bg-muted/40 transition-all">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-xs font-semibold">Add Certification (Optional)</Label>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Showcase your formal expertise to learners</p>
+                        </div>
+                        <button 
+                          onClick={() => setNewSkill({ ...newSkill, hasCert: !newSkill.hasCert })}
+                          className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${newSkill.hasCert ? "bg-primary" : "bg-muted-foreground/30"}`}
+                        >
+                          <span className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${newSkill.hasCert ? "translate-x-4" : "translate-x-1"}`} />
+                        </button>
+                      </div>
+                      
+                      {newSkill.hasCert && (
+                        <div className="space-y-2.5 pt-2 border-t mt-2 animate-in fade-in slide-in-from-top-1">
+                          <div>
+                            <Label className="text-xs">Certificate Title</Label>
+                            <Input 
+                              value={newSkill.certTitle} 
+                              onChange={(e) => setNewSkill({ ...newSkill, certTitle: e.target.value })} 
+                              placeholder="e.g. Meta Front-End Developer" 
+                              className="h-8 text-xs mt-1" 
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Issuing Organization</Label>
+                            <Input 
+                              value={newSkill.certIssuer} 
+                              onChange={(e) => setNewSkill({ ...newSkill, certIssuer: e.target.value })} 
+                              placeholder="e.g. Coursera" 
+                              className="h-8 text-xs mt-1" 
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs mb-1 block">Upload Document (PDF/Image)</Label>
+                            <input 
+                              type="file" 
+                              id="cert-upload" 
+                              className="hidden" 
+                              accept=".pdf,image/jpeg,image/png" 
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  const btn = document.getElementById("cert-upload-btn");
+                                  if (btn) {
+                                    btn.innerHTML = 'Attached ✓';
+                                    btn.classList.add("text-emerald-500", "border-emerald-500", "bg-emerald-50", "dark:bg-emerald-950");
+                                  }
+                                }
+                              }}
+                            />
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full text-xs h-8 border-dashed"
+                              onClick={() => document.getElementById("cert-upload")?.click()}
+                              id="cert-upload-btn"
+                            >
+                              <Upload className="h-3 w-3 mr-1.5" /> Attach File
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <Button onClick={addSkill} size="sm" className="w-full mt-2">
                     <Plus className="h-4 w-4 mr-1" /> Add Skill
                   </Button>
                 </div>

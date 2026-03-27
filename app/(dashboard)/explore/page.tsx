@@ -14,6 +14,7 @@ type ExploreUser = {
   name: string;
   university: string | null;
   major: string | null;
+  avatarUrl: string | null;
   skills: { type: string; skill: { name: string; category: string } }[];
 };
 
@@ -28,7 +29,7 @@ export default function ExplorePage() {
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
-      const res = await fetch(`/api/users?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/users?q=${encodeURIComponent(query)}&category=${encodeURIComponent(activeCategory)}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
@@ -37,7 +38,7 @@ export default function ExplorePage() {
     };
     const debounce = setTimeout(fetchUsers, 300);
     return () => clearTimeout(debounce);
-  }, [query]);
+  }, [query, activeCategory]);
 
   return (
     <div className="space-y-6">
@@ -108,9 +109,13 @@ export default function ExplorePage() {
                 <Link href={`/user/${user.id}`}>
                   <Card className="hover:border-primary/30 transition-all hover:shadow-md cursor-pointer group h-full">
                     <CardHeader className="flex flex-row items-center gap-3 pb-3">
-                      <Avatar className="h-12 w-12 border-2 border-primary/20">
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
-                      </Avatar>
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.name} className="h-12 w-12 rounded-full object-cover border-2 border-primary/20 shrink-0" />
+                      ) : (
+                        <Avatar className="h-12 w-12 border-2 border-primary/20">
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                        </Avatar>
+                      )}
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-base">{user.name}</CardTitle>
                         {user.university && (

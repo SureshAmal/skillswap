@@ -15,6 +15,7 @@ export async function GET() {
       bio: true,
       university: true,
       major: true,
+      avatarUrl: true,
       credits: true,
       skills: {
         include: { skill: true },
@@ -29,11 +30,11 @@ export async function PUT(req: Request) {
   const session = await verifySession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, bio, university, major } = await req.json();
+  const { name, bio, university, major, avatarUrl } = await req.json();
 
   const user = await prisma.user.update({
     where: { id: session.userId },
-    data: { name, bio, university, major },
+    data: { name, bio, university, major, avatarUrl },
   });
 
   return NextResponse.json({ user });

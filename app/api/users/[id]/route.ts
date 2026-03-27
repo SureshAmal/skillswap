@@ -16,6 +16,7 @@ export async function GET(
       bio: true,
       university: true,
       major: true,
+      avatarUrl: true,
       credits: true,
       createdAt: true,
       skills: {

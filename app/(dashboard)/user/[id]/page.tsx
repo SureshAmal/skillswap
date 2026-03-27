@@ -20,6 +20,7 @@ type UserProfile = {
   university: string | null;
   major: string | null;
   credits: number;
+  avatarUrl: string | null;
   createdAt: string;
   completedSessionsCount: number;
   skills: { id: string; type: string; level: string; skill: { name: string; category: string } }[];
@@ -84,11 +85,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardContent className="pt-8 pb-6">
               <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="h-24 w-24 mb-4 rounded-full object-cover border-4 border-primary/20" />
+                ) : (
+                  <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 <h2 className="text-xl font-bold">{user.name}</h2>
                 {user.university && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
@@ -121,7 +126,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
                 </div>
 
                 {/* Message button */}
-                <Link href="/messages" className="w-full mt-5">
+                <Link href={`/messages?user=${user.id}&name=${encodeURIComponent(user.name)}`} className="w-full mt-5">
                   <Button className="w-full">
                     <MessageCircle className="mr-2 h-4 w-4" /> Send Message
                   </Button>

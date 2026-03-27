@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,12 @@ type Message = {
 };
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
+  const preselectedUser = searchParams.get("user");
+  const preselectedName = searchParams.get("name");
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<string | null>(preselectedUser);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -34,11 +39,16 @@ export default function MessagesPage() {
     fetch("/api/messages/conversations")
       .then((r) => r.json())
       .then((data) => {
-        setConversations(data.conversations || []);
+        let convos: Conversation[] = data.conversations || [];
+        // If we have a preselected user not in existing conversations, add them
+        if (preselectedUser && preselectedName && !convos.find((c) => c.userId === preselectedUser)) {
+          convos = [{ userId: preselectedUser, name: preselectedName, lastMessage: "", unread: 0 }, ...convos];
+        }
+        setConversations(convos);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [preselectedUser, preselectedName]);
 
   useEffect(() => {
     if (!selectedUser) return;
