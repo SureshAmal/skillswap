@@ -2,7 +2,7 @@ import { verifySession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GraduationCap, Award, Clock, BookOpen, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -42,6 +42,7 @@ export default async function ProfilePage() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
               <Avatar className="h-20 w-20 mb-3">
+                <AvatarImage src={user.avatarUrl || undefined} alt={user.name} className="object-cover" />
                 <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">{initials}</AvatarFallback>
               </Avatar>
               <h2 className="text-lg font-semibold">{user.name}</h2>
