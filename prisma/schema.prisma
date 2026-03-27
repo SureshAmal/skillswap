@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  bio          String?
+  university   String?
+  major        String?
+  avatarUrl    String?
+  credits      Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  skills       UserSkill[]
+  certificates Certificate[]
+  
+  sessionsAsTeacher Session[] @relation("TeacherSession")
+  sessionsAsLearner Session[] @relation("LearnerSession")
+
+  messagesSent     Message[] @relation("SenderMessage")
+  messagesReceived Message[] @relation("ReceiverMessage")
+  
+  notifications    Notification[]
+}
+
+model Skill {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  category  String
+  createdAt DateTime @default(now())
+
+  users     UserSkill[]
+  sessions  Session[]
+  certificates Certificate[]
+}
+
+model UserSkill {
+  id        String   @id @default(uuid())
+  userId    String
+  skillId   String
+  type      String   // "TEACH" or "LEARN"
+  level     String   // "Beginner", "Intermediate", "Expert"
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId, type])
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  teacherId   String
+  learnerId   String
+  skillId     String
+  status      String   @default("PENDING") // PENDING, SCHEDULED, COMPLETED, CANCELLED
+  scheduledAt DateTime?
+  createdAt   DateTime @default(now())
+
+  teacher     User     @relation("TeacherSession", fields: [teacherId], references: [id], onDelete: Cascade)
+  learner     User     @relation("LearnerSession", fields: [learnerId], references: [id], onDelete: Cascade)
+  skill       Skill    @relation(fields: [skillId], references: [id])
+}
+
+model Certificate {
+  id        String   @id @default(uuid())
+  userId    String
+  skillId   String
+  title     String
+  issuer    String
+  verified  Boolean  @default(false)
+  fileUrl   String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SenderMessage", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceiverMessage", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // "MESSAGE", "SESSION_REQUEST", "CERTIFICATE_VERIFIED"
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
