@@ -256,14 +256,14 @@ export default function MessagesScreen() {
                           </button>
                         )}
                         <div
-                          className={`rounded-2xl px-4 py-2.5 max-w-[75%] ${
+                          className={`relative rounded-2xl px-4 py-2.5 max-w-[75%] min-w-[85px] ${
                             msg.senderId === currentUserId
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
                           }`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <p className={`text-[10px] mt-1 ${msg.senderId === currentUserId ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                          <p className="text-sm break-words">{msg.content}</p>
+                          <p className={`text-[10px] mt-1 text-right whitespace-nowrap ${msg.senderId === currentUserId ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
