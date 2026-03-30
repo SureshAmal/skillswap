@@ -5,7 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, GraduationCap, BookOpen, MessageCircle, Sparkles, ArrowRight } from "lucide-react";
+import {
+  Search,
+  GraduationCap,
+  BookOpen,
+  Sparkles,
+  ArrowRight,
+  Clock,
+  CheckCircle,
+} from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import Link from "next/link";
 
@@ -15,21 +23,44 @@ type ExploreUser = {
   university: string | null;
   major: string | null;
   avatarUrl: string | null;
+  credits: number;
   skills: { type: string; skill: { name: string; category: string } }[];
+  matchingSkills: string[];
 };
 
-const categories = ["All", "Programming", "Design", "Music", "Languages", "Math", "Science", "Business"];
+const defaultCategories = [
+  "All",
+  "Programming",
+  "Design",
+  "Music",
+  "Languages",
+  "Math",
+  "Science",
+  "Business",
+];
 
 export default function ExplorePage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [users, setUsers] = useState<ExploreUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>(defaultCategories);
+
+  useEffect(() => {
+    fetch("/api/skills")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.categories) setCategories(data.categories);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
-      const res = await fetch(`/api/users?q=${encodeURIComponent(query)}&category=${encodeURIComponent(activeCategory)}`);
+      const res = await fetch(
+        `/api/users?q=${encodeURIComponent(query)}&category=${encodeURIComponent(activeCategory)}`,
+      );
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
@@ -45,7 +76,9 @@ export default function ExplorePage() {
       <FadeIn>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Explore Skills</h1>
-          <p className="text-muted-foreground mt-1">Find peers who teach what you want to learn</p>
+          <p className="text-muted-foreground mt-1">
+            Find peers who teach what you want to learn
+          </p>
         </div>
       </FadeIn>
 
@@ -94,7 +127,9 @@ export default function ExplorePage() {
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
             <p className="font-semibold text-lg mb-1">No matches found</p>
-            <p className="text-muted-foreground">Try a different search term or browse all categories.</p>
+            <p className="text-muted-foreground">
+              Try a different search term or browse all categories.
+            </p>
           </div>
         </FadeIn>
       ) : (
@@ -102,7 +137,11 @@ export default function ExplorePage() {
           {users.map((user) => {
             const teachSkills = user.skills.filter((s) => s.type === "TEACH");
             const learnSkills = user.skills.filter((s) => s.type === "LEARN");
-            const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
+            const initials = user.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .slice(0, 2);
 
             return (
               <StaggerItem key={user.id}>
@@ -110,21 +149,35 @@ export default function ExplorePage() {
                   <Card className="hover:border-primary/30 transition-all hover:shadow-md cursor-pointer group h-full">
                     <CardHeader className="flex flex-row items-center gap-3 pb-3">
                       <Avatar className="h-12 w-12 border-2 border-primary/20 shrink-0">
-                        <AvatarImage src={user.avatarUrl || undefined} alt={user.name} className="object-cover" />
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                        <AvatarImage
+                          src={user.avatarUrl || undefined}
+                          alt={user.name}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                          {initials}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-base">{user.name}</CardTitle>
                         {user.university && (
                           <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                             <GraduationCap className="h-3.5 w-3.5" />
-                            {user.university}{user.major ? ` · ${user.major}` : ""}
+                            {user.university}
+                            {user.major ? ` · ${user.major}` : ""}
                           </p>
                         )}
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </CardHeader>
                     <CardContent className="space-y-3">
+                      {user.matchingSkills.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-md">
+                          <CheckCircle className="h-3 w-3" />
+                          Matches your learning:{" "}
+                          {user.matchingSkills.join(", ")}
+                        </div>
+                      )}
                       {teachSkills.length > 0 && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1 font-medium">
@@ -132,29 +185,52 @@ export default function ExplorePage() {
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {teachSkills.slice(0, 4).map((s, i) => (
-                              <Badge key={i} className="bg-primary/10 text-primary border-0 text-xs">{s.skill.name}</Badge>
+                              <Badge
+                                key={i}
+                                className="bg-primary/10 text-primary border-0 text-xs"
+                              >
+                                {s.skill.name}
+                              </Badge>
                             ))}
                             {teachSkills.length > 4 && (
-                              <Badge variant="outline" className="text-xs">+{teachSkills.length - 4}</Badge>
+                              <Badge variant="outline" className="text-xs">
+                                +{teachSkills.length - 4}
+                              </Badge>
                             )}
                           </div>
                         </div>
                       )}
                       {learnSkills.length > 0 && (
                         <div>
-                          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Wants to learn</p>
+                          <p className="text-xs text-muted-foreground mb-1.5 font-medium">
+                            Wants to learn
+                          </p>
                           <div className="flex flex-wrap gap-1.5">
                             {learnSkills.slice(0, 4).map((s, i) => (
-                              <Badge key={i} variant="outline" className="text-xs border-accent/30 text-accent">{s.skill.name}</Badge>
+                              <Badge
+                                key={i}
+                                variant="outline"
+                                className="text-xs border-accent/30 text-accent"
+                              >
+                                {s.skill.name}
+                              </Badge>
                             ))}
                             {learnSkills.length > 4 && (
-                              <Badge variant="outline" className="text-xs">+{learnSkills.length - 4}</Badge>
+                              <Badge variant="outline" className="text-xs">
+                                +{learnSkills.length - 4}
+                              </Badge>
                             )}
                           </div>
                         </div>
                       )}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1 border-t">
+                        <Clock className="h-3 w-3" />
+                        {user.credits} credits
+                      </div>
                       {teachSkills.length === 0 && learnSkills.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No skills listed yet</p>
+                        <p className="text-sm text-muted-foreground italic">
+                          No skills listed yet
+                        </p>
                       )}
                     </CardContent>
                   </Card>

@@ -4,16 +4,42 @@ import { prisma } from "@/lib/db";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { status } = await req.json();
+  const { status, scheduledAt } = await req.json();
 
-  if (!status || !["SCHEDULED", "COMPLETED", "CANCELLED"].includes(status)) {
+  if (status && !["SCHEDULED", "COMPLETED", "CANCELLED"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  if (scheduledAt && !status) {
+    const existingSession = await prisma.session.findUnique({ where: { id } });
+    if (!existingSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    if (existingSession.learnerId !== session.userId) {
+      return NextResponse.json(
+        { error: "Only learner can schedule" },
+        { status: 403 },
+      );
+    }
+    const updated = await prisma.session.update({
+      where: { id },
+      data: { scheduledAt: new Date(scheduledAt) },
+    });
+    return NextResponse.json({ session: updated });
+  }
+
+  if (!status) {
+    return NextResponse.json(
+      { error: "Missing status or scheduledAt" },
+      { status: 400 },
+    );
   }
 
   const existingSession = await prisma.session.findUnique({ where: { id } });
@@ -22,13 +48,52 @@ export async function PATCH(
   }
 
   // Only the teacher can Accept (SCHEDULED) or Decline (CANCELLED) a PENDING request
-  if ((status === "SCHEDULED" || status === "CANCELLED") && existingSession.teacherId !== session.userId) {
-    return NextResponse.json({ error: "Only the instructor can accept or decline requests" }, { status: 403 });
+  if (
+    (status === "SCHEDULED" || status === "CANCELLED") &&
+    existingSession.teacherId !== session.userId
+  ) {
+    return NextResponse.json(
+      { error: "Only the instructor can accept or decline requests" },
+      { status: 403 },
+    );
   }
 
   // Both can mark as COMPLETED
-  if (status === "COMPLETED" && existingSession.teacherId !== session.userId && existingSession.learnerId !== session.userId) {
-    return NextResponse.json({ error: "Not authorized to complete this session" }, { status: 403 });
+  if (
+    status === "COMPLETED" &&
+    existingSession.teacherId !== session.userId &&
+    existingSession.learnerId !== session.userId
+  ) {
+    return NextResponse.json(
+      { error: "Not authorized to complete this session" },
+      { status: 403 },
+    );
+  }
+
+  const SESSION_COST = 1;
+
+  if (status === "COMPLETED") {
+    const existingSession = await prisma.session.findUnique({ where: { id } });
+
+    if (existingSession && existingSession.status !== "COMPLETED") {
+      const learner = await prisma.user.findUnique({
+        where: { id: existingSession.learnerId },
+        select: { credits: true },
+      });
+
+      if (learner && learner.credits >= SESSION_COST) {
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: existingSession.learnerId },
+            data: { credits: { decrement: SESSION_COST } },
+          }),
+          prisma.user.update({
+            where: { id: existingSession.teacherId },
+            data: { credits: { increment: SESSION_COST } },
+          }),
+        ]);
+      }
+    }
   }
 
   const updatedSession = await prisma.session.update({

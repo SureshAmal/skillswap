@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SkillSwap — Peer-to-Peer Skill Sharing",
-  description: "Share your skills, learn from peers, and earn Time Credits on SkillSwap.",
+  description:
+    "Share your skills, learn from peers, and earn Time Credits on SkillSwap.",
 };
 
 export default function RootLayout({
@@ -26,9 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="antialiased">
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

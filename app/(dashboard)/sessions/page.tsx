@@ -4,7 +4,15 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Clock, CheckCircle, XCircle, Sparkles, ArrowRight } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
+import {
+  CalendarDays,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import Link from "next/link";
 
@@ -24,6 +32,8 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
 
   const handleStatusChange = async (sessionId: string, newStatus: string) => {
     setUpdating(sessionId);
@@ -34,9 +44,44 @@ export default function SessionsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        setSessions((prev) => 
-          prev.map((s) => (s.id === sessionId ? { ...s, status: newStatus } : s))
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId ? { ...s, status: newStatus } : s,
+          ),
         );
+      }
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleSchedule = async (sessionId: string) => {
+    if (!scheduleDate) return;
+    setUpdating(sessionId);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledAt: scheduleDate.toISOString(),
+          status: "SCHEDULED",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  status: "SCHEDULED",
+                  scheduledAt: data.session.scheduledAt,
+                }
+              : s,
+          ),
+        );
+        setSchedulingId(null);
+        setScheduleDate(undefined);
       }
     } finally {
       setUpdating(null);
@@ -53,23 +98,45 @@ export default function SessionsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
-    COMPLETED: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "text-emerald-600", bg: "bg-emerald-50" },
-    CANCELLED: { icon: <XCircle className="h-3.5 w-3.5" />, color: "text-red-500", bg: "bg-red-50" },
-    SCHEDULED: { icon: <CalendarDays className="h-3.5 w-3.5" />, color: "text-primary", bg: "bg-primary/10" },
-    PENDING: { icon: <Clock className="h-3.5 w-3.5" />, color: "text-amber-500", bg: "bg-amber-50" },
+  const statusConfig: Record<
+    string,
+    { icon: React.ReactNode; color: string; bg: string }
+  > = {
+    COMPLETED: {
+      icon: <CheckCircle className="h-3.5 w-3.5" />,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    CANCELLED: {
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      color: "text-red-500",
+      bg: "bg-red-50",
+    },
+    SCHEDULED: {
+      icon: <CalendarDays className="h-3.5 w-3.5" />,
+      color: "text-primary",
+      bg: "bg-primary/10",
+    },
+    PENDING: {
+      icon: <Clock className="h-3.5 w-3.5" />,
+      color: "text-amber-500",
+      bg: "bg-amber-50",
+    },
   };
 
   const filters = ["all", "SCHEDULED", "PENDING", "COMPLETED", "CANCELLED"];
 
-  const filteredSessions = filter === "all" ? sessions : sessions.filter((s) => s.status === filter);
+  const filteredSessions =
+    filter === "all" ? sessions : sessions.filter((s) => s.status === filter);
 
   return (
     <div className="space-y-6">
       <FadeIn>
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Sessions</h1>
-          <p className="text-muted-foreground mt-1">Track your skill swap sessions</p>
+          <p className="text-muted-foreground mt-1">
+            Track your skill swap sessions
+          </p>
         </div>
       </FadeIn>
 
@@ -95,7 +162,9 @@ export default function SessionsPage() {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse"><CardContent className="pt-6 h-32" /></Card>
+            <Card key={i} className="animate-pulse">
+              <CardContent className="pt-6 h-32" />
+            </Card>
           ))}
         </div>
       ) : filteredSessions.length === 0 ? (
@@ -106,7 +175,9 @@ export default function SessionsPage() {
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
               <p className="font-semibold text-lg mb-1">
-                {sessions.length === 0 ? "No sessions yet" : "No matching sessions"}
+                {sessions.length === 0
+                  ? "No sessions yet"
+                  : "No matching sessions"}
               </p>
               <p className="text-muted-foreground text-sm mb-4">
                 {sessions.length === 0
@@ -114,7 +185,10 @@ export default function SessionsPage() {
                   : "Try a different filter to see more sessions."}
               </p>
               {sessions.length === 0 && (
-                <Link href="/explore" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                <Link
+                  href="/explore"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
                   Browse skills <ArrowRight className="h-3 w-3" />
                 </Link>
               )}
@@ -129,8 +203,12 @@ export default function SessionsPage() {
               <StaggerItem key={s.id}>
                 <Card className="hover:border-primary/20 transition-all hover:shadow-sm">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-semibold">{s.skill.name}</CardTitle>
-                    <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.color} ${config.bg}`}>
+                    <CardTitle className="text-sm font-semibold">
+                      {s.skill.name}
+                    </CardTitle>
+                    <span
+                      className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.color} ${config.bg}`}
+                    >
                       {config.icon}
                       {s.status}
                     </span>
@@ -138,41 +216,109 @@ export default function SessionsPage() {
                   <CardContent className="space-y-2">
                     <p className="text-sm">
                       {s.role === "teacher" ? (
-                        <>Teaching <span className="font-medium">{s.learner.name}</span></>
+                        <>
+                          Teaching{" "}
+                          <span className="font-medium">{s.learner.name}</span>
+                        </>
                       ) : (
-                        <>Learning from <span className="font-medium">{s.teacher.name}</span></>
+                        <>
+                          Learning from{" "}
+                          <span className="font-medium">{s.teacher.name}</span>
+                        </>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <CalendarDays className="h-3 w-3" />
                       {s.scheduledAt
-                        ? `${new Date(s.scheduledAt).toLocaleDateString()} at ${new Date(s.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        ? `${new Date(s.scheduledAt).toLocaleDateString()} at ${new Date(s.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                         : "Date TBD"}
                     </p>
                     <Badge variant="outline" className="text-xs">
                       {s.role === "teacher" ? "Teaching" : "Learning"}
                     </Badge>
-                    
+
                     {/* Action Buttons */}
                     <div className="flex gap-2 mt-4 pt-4 border-t">
                       {s.status === "PENDING" && s.role === "teacher" && (
                         <>
-                          <Button size="sm" onClick={() => handleStatusChange(s.id, "SCHEDULED")} disabled={updating === s.id} className="w-full bg-primary/20 hover:bg-primary/30 text-primary border-0">
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleStatusChange(s.id, "SCHEDULED")
+                            }
+                            disabled={updating === s.id}
+                            className="w-full bg-primary/20 hover:bg-primary/30 text-primary border-0"
+                          >
                             Accept
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleStatusChange(s.id, "CANCELLED")} disabled={updating === s.id} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              handleStatusChange(s.id, "CANCELLED")
+                            }
+                            disabled={updating === s.id}
+                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
                             Decline
                           </Button>
                         </>
                       )}
+                      {s.status === "PENDING" &&
+                        s.role === "learner" &&
+                        schedulingId !== s.id && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSchedulingId(s.id)}
+                            className="w-full"
+                          >
+                            <CalendarDays className="mr-2 h-4 w-4" /> Schedule
+                            Session
+                          </Button>
+                        )}
+                      {s.status === "PENDING" &&
+                        s.role === "learner" &&
+                        schedulingId === s.id && (
+                          <div className="w-full space-y-2">
+                            <DateTimePicker
+                              value={scheduleDate}
+                              onChange={setScheduleDate}
+                              minDate={new Date()}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSchedule(s.id)}
+                                disabled={!scheduleDate || updating === s.id}
+                                className="flex-1"
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSchedulingId(null);
+                                  setScheduleDate(undefined);
+                                }}
+                                className="flex-1"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       {s.status === "SCHEDULED" && (
-                        <Button size="sm" variant="outline" onClick={() => handleStatusChange(s.id, "COMPLETED")} disabled={updating === s.id} className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700">
-                          <CheckCircle className="mr-2 h-4 w-4" /> Mark Completed
-                        </Button>
-                      )}
-                      {s.status === "PENDING" && s.role === "learner" && (
-                        <Button size="sm" variant="outline" disabled className="w-full opacity-50 border-dashed">
-                          <Clock className="mr-2 h-4 w-4" /> Waiting for approval
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStatusChange(s.id, "COMPLETED")}
+                          disabled={updating === s.id}
+                          className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" /> Mark
+                          Completed
                         </Button>
                       )}
                     </div>

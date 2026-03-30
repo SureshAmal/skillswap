@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 
 export async function GET(req: Request) {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
@@ -37,7 +38,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { receiverId, content } = await req.json();
 
@@ -58,7 +60,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const { messageId, otherUserId } = body;

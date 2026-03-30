@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 
 export async function POST() {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await prisma.notification.updateMany({
     where: { userId: session.userId, read: false },

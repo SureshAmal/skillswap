@@ -25,13 +25,13 @@ model User {
 
   skills       UserSkill[]
   certificates Certificate[]
-  
+
   sessionsAsTeacher Session[] @relation("TeacherSession")
   sessionsAsLearner Session[] @relation("LearnerSession")
 
   messagesSent     Message[] @relation("SenderMessage")
   messagesReceived Message[] @relation("ReceiverMessage")
-  
+
   notifications    Notification[]
 }
 

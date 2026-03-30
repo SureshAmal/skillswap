@@ -55,7 +55,9 @@ export function AppSidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <RefreshCcw className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">SkillSwap</span>
+          <span className="text-lg font-semibold tracking-tight">
+            SkillSwap
+          </span>
         </Link>
       </SidebarHeader>
 
@@ -69,7 +71,10 @@ export function AppSidebar() {
               {mainNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-2 w-full">
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-2 w-full"
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -87,7 +92,10 @@ export function AppSidebar() {
               {communicationNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-2 w-full">
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-2 w-full"
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -105,7 +113,10 @@ export function AppSidebar() {
               {accountNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-2 w-full">
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-2 w-full"
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -121,7 +132,10 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton>
-              <Link href="/api/auth/logout" className="flex items-center gap-2 w-full text-muted-foreground">
+              <Link
+                href="/api/auth/logout"
+                className="flex items-center gap-2 w-full text-muted-foreground"
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Log out</span>
               </Link>

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -43,7 +43,8 @@ export async function GET(
   return NextResponse.json({
     user: {
       ...user,
-      completedSessionsCount: user.sessionsAsTeacher.length + user.sessionsAsLearner.length,
+      completedSessionsCount:
+        user.sessionsAsTeacher.length + user.sessionsAsLearner.length,
     },
   });
 }

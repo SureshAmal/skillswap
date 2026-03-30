@@ -17,7 +17,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -37,11 +37,12 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
-
-  useEffect(() => {
-    setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
-  }, []);
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    typeof window !== "undefined" &&
+    document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light",
+  );
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -58,7 +59,10 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2.5 shrink-0"
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
               <RefreshCcw className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -74,7 +78,7 @@ export function Navbar() {
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                   pathname === link.href
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 <link.icon className="h-[18px] w-[18px]" />
@@ -92,7 +96,7 @@ export function Navbar() {
                   "flex items-center justify-center h-9 w-9 rounded-lg transition-colors",
                   pathname === link.href
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
                 title={link.title}
               >
@@ -107,7 +111,11 @@ export function Navbar() {
               className="flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               title="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+              {theme === "dark" ? (
+                <Sun className="h-[18px] w-[18px]" />
+              ) : (
+                <Moon className="h-[18px] w-[18px]" />
+              )}
             </button>
             <button
               onClick={handleLogout}
@@ -122,7 +130,11 @@ export function Navbar() {
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:bg-muted"
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
 
@@ -137,7 +149,7 @@ export function Navbar() {
                   "flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   pathname === link.href
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 <link.icon className="h-[18px] w-[18px]" />
@@ -154,7 +166,11 @@ export function Navbar() {
               }}
               className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
             >
-              {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+              {theme === "dark" ? (
+                <Sun className="h-[18px] w-[18px]" />
+              ) : (
+                <Moon className="h-[18px] w-[18px]" />
+              )}
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
             <button

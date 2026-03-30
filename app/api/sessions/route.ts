@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 
 export async function GET() {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [asTeacher, asLearner] = await Promise.all([
     prisma.session.findMany({
@@ -30,25 +31,34 @@ export async function GET() {
   const sessions = [
     ...asTeacher.map((s) => ({ ...s, role: "teacher" as const })),
     ...asLearner.map((s) => ({ ...s, role: "learner" as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
   return NextResponse.json({ sessions });
 }
 
 export async function POST(req: Request) {
   const session = await verifySession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
     const { teacherId, skillId, scheduledAt } = body;
 
     if (!teacherId || !skillId || !scheduledAt) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     if (teacherId === session.userId) {
-      return NextResponse.json({ error: "Cannot book a session with yourself" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Cannot book a session with yourself" },
+        { status: 400 },
+      );
     }
 
     // Verify teacher teaches this skill
@@ -57,7 +67,10 @@ export async function POST(req: Request) {
     });
 
     if (!teacherHasSkill) {
-      return NextResponse.json({ error: "Instructor does not teach this skill" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Instructor does not teach this skill" },
+        { status: 400 },
+      );
     }
 
     const newSession = await prisma.session.create({
@@ -70,8 +83,14 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ message: "Session requested successfully", session: newSession });
-  } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({
+      message: "Session requested successfully",
+      session: newSession,
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

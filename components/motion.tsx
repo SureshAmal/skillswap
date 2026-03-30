@@ -3,7 +3,15 @@
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
 
-export function FadeIn({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+export function FadeIn({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -16,7 +24,13 @@ export function FadeIn({ children, delay = 0, className }: { children: ReactNode
   );
 }
 
-export function StaggerContainer({ children, className }: { children: ReactNode; className?: string }) {
+export function StaggerContainer({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <motion.div
       initial="hidden"
@@ -32,12 +46,22 @@ export function StaggerContainer({ children, className }: { children: ReactNode;
   );
 }
 
-export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
+export function StaggerItem({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <motion.div
       variants={{
         hidden: { opacity: 0, y: 16 },
-        show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.35, ease: "easeOut" },
+        },
       }}
       className={className}
     >
@@ -46,7 +70,15 @@ export function StaggerItem({ children, className }: { children: ReactNode; clas
   );
 }
 
-export function ScaleIn({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+export function ScaleIn({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -59,7 +91,17 @@ export function ScaleIn({ children, delay = 0, className }: { children: ReactNod
   );
 }
 
-export function SlideIn({ children, direction = "left", delay = 0, className }: { children: ReactNode; direction?: "left" | "right"; delay?: number; className?: string }) {
+export function SlideIn({
+  children,
+  direction = "left",
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  direction?: "left" | "right";
+  delay?: number;
+  className?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, x: direction === "left" ? -20 : 20 }}
