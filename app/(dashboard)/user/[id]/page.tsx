@@ -414,7 +414,7 @@ export default function UserProfilePage({
       </div>
       {/* Booking Modal */}
       {bookingOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <FadeIn className="w-full max-w-md">
             <Card className="shadow-2xl border-primary/20 max-h-[90vh] overflow-y-auto">
               <CardHeader className="border-b bg-muted/30 pb-4 sticky top-0 bg-card z-10">
@@ -451,7 +451,15 @@ export default function UserProfilePage({
                         }
                       >
                         <SelectTrigger className="w-full h-10">
-                          <SelectValue placeholder="Choose a skill they teach..." />
+                          {selectedSkillId ? (
+                            <span className="flex-1 text-left truncate">
+                              {teachSkills.find(s => s.skill.id === selectedSkillId)?.skill.name}
+                            </span>
+                          ) : (
+                            <span className="flex-1 text-left text-muted-foreground truncate">
+                              Choose a skill they teach...
+                            </span>
+                          )}
                         </SelectTrigger>
                         <SelectContent
                           className="w-full max-w-[400px]"

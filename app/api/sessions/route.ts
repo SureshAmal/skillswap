@@ -61,6 +61,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // Verify learner has enough credits
+    const learner = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { credits: true },
+    });
+
+    if (!learner || learner.credits < 1) {
+      return NextResponse.json(
+        { error: "Insufficient credits to request a session. Teach a skill to earn more!" },
+        { status: 403 }
+      );
+    }
+
     // Verify teacher teaches this skill
     const teacherHasSkill = await prisma.userSkill.findFirst({
       where: { userId: teacherId, skillId: skillId, type: "TEACH" },

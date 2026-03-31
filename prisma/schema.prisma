@@ -33,6 +33,7 @@ model User {
   messagesReceived Message[] @relation("ReceiverMessage")
 
   notifications    Notification[]
+  reviews          Review[]
 }
 
 model Skill {
@@ -71,6 +72,22 @@ model Session {
   teacher     User     @relation("TeacherSession", fields: [teacherId], references: [id], onDelete: Cascade)
   learner     User     @relation("LearnerSession", fields: [learnerId], references: [id], onDelete: Cascade)
   skill       Skill    @relation(fields: [skillId], references: [id])
+
+  reviews     Review[]
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  sessionId String
+  reviewerId String
+  rating    Int      // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reviewer  User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, reviewerId])
 }
 
 model Certificate {

@@ -9,6 +9,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
+  const after = searchParams.get("after");
 
   if (!userId) return NextResponse.json({ messages: [] });
 
@@ -22,16 +23,25 @@ export async function GET(req: Request) {
     data: { read: true },
   });
 
-  const messages = await prisma.message.findMany({
-    where: {
-      OR: [
-        { senderId: session.userId, receiverId: userId },
-        { senderId: userId, receiverId: session.userId },
-      ],
-    },
-    orderBy: { createdAt: "asc" },
-    take: 100,
+  const whereClause: { OR: { senderId: string, receiverId: string }[], createdAt?: { gt: Date } } = {
+    OR: [
+      { senderId: session.userId, receiverId: userId },
+      { senderId: userId, receiverId: session.userId },
+    ],
+  };
+
+  if (after) {
+    whereClause.createdAt = { gt: new Date(after) };
+  }
+
+  const rawMessages = await prisma.message.findMany({
+    where: whereClause,
+    orderBy: { createdAt: "desc" },
+    take: after ? undefined : 100, // If polling new, fetch all. If init, fetch last 100.
   });
+
+  // Reverse to make it chronological
+  const messages = rawMessages.reverse();
 
   return NextResponse.json({ messages });
 }

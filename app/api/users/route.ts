@@ -6,6 +6,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q") || "";
   const category = searchParams.get("category") || "All";
+  const limit = parseInt(searchParams.get("limit") || "20", 10);
+  const cursor = searchParams.get("cursor");
 
   const session = await verifySession();
   let userLearnSkills: string[] = [];
@@ -24,10 +26,15 @@ export async function GET(req: Request) {
 
   if (q) {
     whereClause.OR = [
-      { name: { contains: q } },
-      { university: { contains: q } },
-      { major: { contains: q } },
-      { skills: { some: { skill: { name: { contains: q } } } } },
+      { name: { contains: q, mode: "insensitive" } },
+      { bio: { contains: q, mode: "insensitive" } },
+      { university: { contains: q, mode: "insensitive" } },
+      { major: { contains: q, mode: "insensitive" } },
+      {
+        skills: {
+          some: { skill: { name: { contains: q, mode: "insensitive" } } },
+        },
+      },
     ];
   }
 
@@ -42,9 +49,13 @@ export async function GET(req: Request) {
 
   const users = await prisma.user.findMany({
     where: whereClause,
+    take: limit,
+    ...(cursor && { skip: 1, cursor: { id: cursor } }),
+    orderBy: { createdAt: "desc" },
     select: {
       id: true,
       name: true,
+      bio: true,
       university: true,
       major: true,
       avatarUrl: true,
@@ -56,7 +67,6 @@ export async function GET(req: Request) {
         },
       },
     },
-    take: 30,
   });
 
   const usersWithMatches = users.map((user) => {
@@ -70,5 +80,7 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json({ users: usersWithMatches });
+  const nextCursor = users.length === limit ? users[users.length - 1].id : null;
+
+  return NextResponse.json({ users: usersWithMatches, nextCursor });
 }

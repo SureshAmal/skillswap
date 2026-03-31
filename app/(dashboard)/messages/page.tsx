@@ -9,6 +9,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Send, MessageCircle, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { FadeIn } from "@/components/motion";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+// Virtualization and Measurement
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMessageMeasurement } from "@/hooks/useMessageMeasurement";
 
 type Conversation = {
   userId: string;
@@ -39,12 +45,49 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const selectedUserRef = useRef(selectedUser);
+
+  // Virtualization Setup
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const { isReady, measure } = useMessageMeasurement();
 
   useEffect(() => {
     selectedUserRef.current = selectedUser;
   }, [selectedUser]);
+
+  // Track parent width for accurate text boundary calculations
+  useEffect(() => {
+    if (!parentRef.current || !selectedUser) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(parentRef.current);
+    
+    // Initial measure
+    setContainerWidth(parentRef.current.offsetWidth);
+
+    return () => observer.disconnect();
+  }, [selectedUser]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      if (!isReady || containerWidth === 0) return 60; // Fallback 
+      return measure(messages[index].content, containerWidth);
+    },
+    overscan: 10,
+  });
+
+  // A helper to scroll firmly to the bottom of the virtualized list
+  const scrollToBottom = () => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        rowVirtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+      }, 50);
+    }
+  };
 
   useEffect(() => {
     const fetchConvos = () => {
@@ -86,13 +129,15 @@ export default function MessagesScreen() {
       .then((r) => r.json())
       .then((data) => {
         setMessages(data.messages || []);
-        setTimeout(
-          () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }),
-          100,
-        );
+        scrollToBottom();
       })
       .catch(() => {});
   }, [selectedUser]);
+
+  const latestMessageTimeRef = useRef<string | null>(null);
+  useEffect(() => {
+    latestMessageTimeRef.current = messages.length > 0 ? messages[messages.length - 1].createdAt : null;
+  }, [messages]);
 
   // Vercel Serverless-compatible Polling Mechanism
   useEffect(() => {
@@ -101,17 +146,17 @@ export default function MessagesScreen() {
 
     const fetchLatest = async () => {
       try {
-        const r = await fetch(`/api/messages?userId=${selectedUser}`);
+        const after = latestMessageTimeRef.current ? `&after=${latestMessageTimeRef.current}` : '';
+        const r = await fetch(`/api/messages?userId=${selectedUser}${after}`);
         const data = await r.json();
 
-        if (isMounted && data.messages) {
+        if (isMounted && data.messages && data.messages.length > 0) {
           setMessages((prev) => {
-            if (prev.length === data.messages.length) return prev;
-            setTimeout(
-              () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }),
-              100,
-            );
-            return data.messages;
+            const next = [...prev, ...data.messages];
+            setTimeout(() => {
+              rowVirtualizer.scrollToIndex(next.length - 1, { align: "end" });
+            }, 50);
+            return next;
           });
 
           // Refetch conversations just to update the sidebar cleanly on new messages
@@ -144,7 +189,12 @@ export default function MessagesScreen() {
     setNewMessage("");
     if (res.ok) {
       const data = await res.json();
-      setMessages((prev) => [...prev, data.message]);
+      setMessages((prev) => {
+        const next = [...prev, data.message];
+        // Ensure scroll to bottom on local update
+        setTimeout(() => rowVirtualizer.scrollToIndex(next.length - 1, { align: "end" }), 50);
+        return next;
+      });
 
       // Update our own conversations list to reflect the last message we just explicitly sent
       setConversations((prev) => {
@@ -159,10 +209,6 @@ export default function MessagesScreen() {
         return prev;
       });
     }
-    setTimeout(
-      () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }),
-      100,
-    );
   };
 
   const clearChat = async (userId: string) => {
@@ -261,7 +307,7 @@ export default function MessagesScreen() {
                           </p>
                         </div>
                         {conv.unread > 0 && (
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                             {conv.unread}
                           </span>
                         )}
@@ -313,14 +359,19 @@ export default function MessagesScreen() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => clearChat(selectedUser!)}
+                      onClick={() => clearChat(selectedUser)}
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
+
+                {/* --- VIRTUALIZED CHAT CONTAINER --- */}
+                <CardContent 
+                  ref={parentRef}
+                  className="flex-1 overflow-y-auto p-4"
+                >
                   {messages.length === 0 && (
                     <div className="text-center py-10">
                       <p className="text-muted-foreground">
@@ -328,42 +379,73 @@ export default function MessagesScreen() {
                       </p>
                     </div>
                   )}
-                  {messages.map((msg) => (
+                  
+                  {messages.length > 0 && (
                     <div
-                      key={msg.id}
-                      className={`flex group ${msg.senderId === currentUserId ? "justify-end" : "justify-start"}`}
+                      style={{
+                        height: `${rowVirtualizer.getTotalSize()}px`,
+                        width: '100%',
+                        position: 'relative',
+                      }}
                     >
-                      <div className="flex items-center gap-2">
-                        {msg.senderId === currentUserId && (
-                          <button
-                            onClick={() => deleteMessage(msg.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all rounded-full hover:bg-destructive/10"
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const msg = messages[virtualRow.index];
+                        return (
+                          <div
+                            key={msg.id}
+                            data-index={virtualRow.index}
+                            ref={rowVirtualizer.measureElement}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              transform: `translateY(${virtualRow.start}px)`,
+                              paddingBottom: '12px'
+                            }}
+                            className={`flex group ${
+                              msg.senderId === currentUserId ? "justify-end" : "justify-start"
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                        <div
-                          className={`relative rounded-2xl px-4 py-2.5 max-w-[75%] min-w-[85px] ${
-                            msg.senderId === currentUserId
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
-                        >
-                          <p className="text-sm break-words">{msg.content}</p>
-                          <p
-                            className={`text-[10px] mt-1 text-right whitespace-nowrap ${msg.senderId === currentUserId ? "text-primary-foreground/60" : "text-muted-foreground"}`}
-                          >
-                            {new Date(msg.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                      </div>
+                            <div className="flex items-end gap-2 max-w-[80%]">
+                              {msg.senderId === currentUserId && (
+                                <button
+                                  onClick={() => deleteMessage(msg.id)}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all rounded-full hover:bg-destructive/10 shrink-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                              <div
+                                className={`relative rounded-2xl px-4 py-2.5 min-w-[85px] w-fit ${
+                                  msg.senderId === currentUserId
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted text-foreground"
+                                }`}
+                              >
+                                <div className="text-sm break-words whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none [&_pre]:bg-black/20 [&_pre]:rounded-lg [&_pre]:p-2 [&_pre]:text-xs [&_code]:text-xs [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_a]:text-inherit [&_a]:underline">
+                                  <Markdown remarkPlugins={[remarkGfm]}>{msg.content}</Markdown>
+                                </div>
+                                <p
+                                  className={`text-[10px] mt-1 text-right whitespace-nowrap ${
+                                    msg.senderId === currentUserId ? "text-primary-foreground/60" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {new Date(msg.createdAt).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                  <div ref={chatEndRef} />
+                  )}
                 </CardContent>
+                {/* --------------------------------- */}
+
                 <div className="p-4 border-t flex gap-3 shrink-0">
                   <Input
                     value={newMessage}

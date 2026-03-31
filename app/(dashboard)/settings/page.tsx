@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Save,
   Plus,
   X,
@@ -597,10 +604,10 @@ export default function SettingsPage() {
               <Separator />
 
               {/* Add Skill */}
-              <div>
-                <p className="text-sm font-medium mb-2">Add a new skill</p>
-                <div className="grid gap-2">
-                  <div>
+              <div className="pt-3">
+                <p className="text-sm font-medium mb-3">Add a new skill</p>
+                <div className="grid gap-4">
+                  <div className="space-y-1.5">
                     <Label className="text-xs">Skill Name</Label>
                     <Input
                       value={newSkill.name}
@@ -608,35 +615,44 @@ export default function SettingsPage() {
                         setNewSkill({ ...newSkill, name: e.target.value })
                       }
                       placeholder="React, Guitar, French..."
+                      className="h-9"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
                       <Label className="text-xs">Type</Label>
-                      <select
+                      <Select
                         value={newSkill.type}
-                        onChange={(e) =>
-                          setNewSkill({ ...newSkill, type: e.target.value })
+                        onValueChange={(val) =>
+                          setNewSkill({ ...newSkill, type: val || "TEACH" })
                         }
-                        className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
                       >
-                        <option value="TEACH">Teach</option>
-                        <option value="LEARN">Learn</option>
-                      </select>
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="TEACH" className="text-xs">Teach</SelectItem>
+                          <SelectItem value="LEARN" className="text-xs">Learn</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
+                    <div className="space-y-1.5">
                       <Label className="text-xs">Level</Label>
-                      <select
+                      <Select
                         value={newSkill.level}
-                        onChange={(e) =>
-                          setNewSkill({ ...newSkill, level: e.target.value })
+                        onValueChange={(val) =>
+                          setNewSkill({ ...newSkill, level: val || "Beginner" })
                         }
-                        className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
                       >
-                        <option>Beginner</option>
-                        <option>Intermediate</option>
-                        <option>Expert</option>
-                      </select>
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Beginner" className="text-xs">Beginner</SelectItem>
+                          <SelectItem value="Intermediate" className="text-xs">Intermediate</SelectItem>
+                          <SelectItem value="Expert" className="text-xs">Expert</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

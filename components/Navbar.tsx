@@ -21,7 +21,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { title: "Home", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Overview", href: "/overview", icon: LayoutDashboard },
   { title: "Explore", href: "/explore", icon: Search },
   { title: "Sessions", href: "/sessions", icon: CalendarDays },
   { title: "Messages", href: "/messages", icon: MessageCircle },

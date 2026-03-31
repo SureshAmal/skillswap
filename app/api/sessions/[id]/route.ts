@@ -76,23 +76,16 @@ export async function PATCH(
     const existingSession = await prisma.session.findUnique({ where: { id } });
 
     if (existingSession && existingSession.status !== "COMPLETED") {
-      const learner = await prisma.user.findUnique({
-        where: { id: existingSession.learnerId },
-        select: { credits: true },
-      });
-
-      if (learner && learner.credits >= SESSION_COST) {
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: existingSession.learnerId },
-            data: { credits: { decrement: SESSION_COST } },
-          }),
-          prisma.user.update({
-            where: { id: existingSession.teacherId },
-            data: { credits: { increment: SESSION_COST } },
-          }),
-        ]);
-      }
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: existingSession.learnerId },
+          data: { credits: { decrement: SESSION_COST } },
+        }),
+        prisma.user.update({
+          where: { id: existingSession.teacherId },
+          data: { credits: { increment: SESSION_COST } },
+        }),
+      ]);
     }
   }
 

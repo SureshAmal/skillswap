@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Bell,
@@ -11,7 +11,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
+import { FadeIn, StaggerItem } from "@/components/motion";
+
+// Virtualization & Measurement
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useTextMeasurement } from "@/hooks/useTextMeasurement";
 
 type Notification = {
   id: string;
@@ -24,16 +28,82 @@ type Notification = {
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Virtualizer refs and measurement
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const { isReady, measureTextHeight } = useTextMeasurement("16px Inter, system-ui, sans-serif");
 
   useEffect(() => {
     fetch("/api/notifications")
       .then((r) => r.json())
       .then((data) => {
         setNotifications(data.notifications || []);
+        setCursor(data.nextCursor);
+        setHasNextPage(!!data.nextCursor);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    const res = await fetch(`/api/notifications?cursor=${cursor}`);
+    if (res.ok) {
+      const data = await res.json();
+      setNotifications((prev) => [...prev, ...data.notifications]);
+      setCursor(data.nextCursor);
+      setHasNextPage(!!data.nextCursor);
+    }
+    setLoadingMore(false);
+  };
+
+  useEffect(() => {
+    if (!observerRef.current || !hasNextPage || loadingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, loadingMore, cursor]);
+
+  // Track parent width precisely for pretext measurements
+  useEffect(() => {
+    if (!parentRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(parentRef.current);
+    setContainerWidth(parentRef.current.offsetWidth);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: notifications.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      if (!isReady || containerWidth === 0) return 96; // 96px fallback
+      const n = notifications[index];
+      // Text container width roughly = full width - padding(32px) - icon(40px) - gap(16px) - extra scrollbar buffer(20px) = 108px deduction
+      const textWidth = Math.max(containerWidth - 108, 100);
+      const textHeight = measureTextHeight(n.content, textWidth, 24);
+      // Height structure:
+      // padding: py-4 (32px)
+      // timestamp: text-sm (20px) + mt-0.5 (2px)
+      // bottom spatial gap between virtual elements: 8px
+      return textHeight + 32 + 22 + 8;
+    },
+    overscan: 10,
+  });
 
   const markAllRead = async () => {
     await fetch("/api/notifications/read-all", { method: "POST" });
@@ -103,40 +173,78 @@ export default function NotificationsPage() {
           </Card>
         </FadeIn>
       ) : (
-        <StaggerContainer className="space-y-2">
-          {notifications.map((n) => (
-            <StaggerItem key={n.id}>
-              <Card
-                className={`transition-colors ${n.read ? "opacity-60" : "border-primary/20"}`}
-              >
-                <CardContent className="flex items-center gap-4 py-4">
-                  <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                    {iconForType(n.type)}
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className={
-                        n.read ? "text-muted-foreground" : "font-medium"
-                      }
+        <div 
+          ref={parentRef} 
+          className="h-[calc(100vh-200px)] min-h-[500px] overflow-y-auto pr-2 custom-scrollbar"
+        >
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const n = notifications[virtualRow.index];
+              return (
+                <div
+                  key={n.id}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                    paddingBottom: "8px",
+                  }}
+                >
+                  <StaggerItem>
+                    <Card
+                      className={`transition-colors h-full ${
+                        n.read ? "opacity-60" : "border-primary/20"
+                      }`}
                     >
-                      {n.content}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {new Date(n.createdAt).toLocaleDateString()} at{" "}
-                      {new Date(n.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  {!n.read && (
-                    <span className="h-3 w-3 rounded-full bg-primary shrink-0" />
-                  )}
-                </CardContent>
-              </Card>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
+                      <CardContent className="flex gap-4 py-4">
+                        <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                          {iconForType(n.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`break-words ${
+                              n.read ? "text-muted-foreground" : "font-medium"
+                            }`}
+                          >
+                            {n.content}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {new Date(n.createdAt).toLocaleDateString()} at{" "}
+                            {new Date(n.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        {!n.read && (
+                          <div className="flex items-center justify-center pt-2">
+                             <span className="h-3 w-3 rounded-full bg-primary shrink-0" />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </StaggerItem>
+                </div>
+              );
+            })}
+          </div>
+          {/* Infinite Scroll Trigger */}
+          {hasNextPage && (
+            <div ref={observerRef} className="w-full flex justify-center py-4">
+              <span className="text-sm text-muted-foreground animate-pulse">Loading more...</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

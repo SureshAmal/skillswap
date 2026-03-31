@@ -4,7 +4,7 @@ import * as React from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -67,18 +67,16 @@ export function DateTimePicker({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
-          )}
-          disabled={disabled}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP p") : <span>Pick a date and time</span>}
-        </Button>
+      <PopoverTrigger
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "w-full justify-start text-left font-normal",
+          !date && "text-muted-foreground",
+        )}
+        disabled={disabled}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {date ? format(date, "PPP p") : <span>Pick a date and time</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="flex flex-col sm:flex-row">
